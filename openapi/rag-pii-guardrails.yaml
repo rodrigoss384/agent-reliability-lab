@@ -1,0 +1,161 @@
+openapi: 3.1.1
+info:
+  title: RAG PII Guardrails API
+  version: 0.1.0
+  description: API local da demonstração com dados exclusivamente sintéticos.
+  license:
+    name: Apache-2.0
+security: []
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/health:
+    get:
+      summary: Consultar saúde sanitizada das dependências.
+      operationId: getHealth
+      responses:
+        '200': { $ref: '#/components/responses/HealthOk' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/models:
+    get:
+      summary: Consultar identificadores públicos dos modelos efetivos.
+      operationId: getModels
+      responses:
+        '200':
+          description: Configuração pública efetiva dos modelos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModelsResponse' }
+  /api/chat:
+    post:
+      summary: Processar uma pergunta no pipeline RAG com guardrails.
+      operationId: createChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatRequest' }
+      responses:
+        '200':
+          description: Resposta entregue ou bloqueio funcional sanitizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatResponse' }
+        '409': { $ref: '#/components/responses/SessionBusy' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/DependencyUnavailable' }
+  /api/conversation/{session_id}:
+    get:
+      summary: Recuperar histórico sanitizado de uma sessão local.
+      operationId: getConversation
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Histórico sanitizado dentro do TTL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationResponse' }
+        '404': { $ref: '#/components/responses/SessionNotFound' }
+components:
+  parameters:
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+  schemas:
+    GuardrailState:
+      type: string
+      enum: [entregue, bloqueado-na-entrada, bloqueado-na-saída, falha-segura]
+    ChatRequest:
+      type: object
+      required: [question]
+      additionalProperties: false
+      properties:
+        question: { type: string, minLength: 1 }
+        session_id: { type: string, minLength: 1 }
+    Trace:
+      type: object
+      additionalProperties: false
+      required: [retrieved_count, used_count, blocked_count, guardrail_state, total_ms]
+      properties:
+        retrieved_count: { type: integer, minimum: 0, maximum: 5 }
+        used_count: { type: integer, minimum: 0 }
+        blocked_count: { type: integer, minimum: 0 }
+        guardrail_state: { $ref: '#/components/schemas/GuardrailState' }
+        total_ms: { type: integer, minimum: 0 }
+        sources:
+          type: array
+          items: { type: string }
+    ChatResponse:
+      type: object
+      additionalProperties: false
+      required: [session_id, answer, model_used, guardrail_state, trace]
+      properties:
+        session_id: { type: string }
+        answer: { type: string }
+        model_used: { type: string }
+        guardrail_state: { $ref: '#/components/schemas/GuardrailState' }
+        trace: { $ref: '#/components/schemas/Trace' }
+    ConversationTurn:
+      type: object
+      additionalProperties: false
+      required: [question, timestamp, guardrail_state, retrieved_count, used_count, blocked_count]
+      properties:
+        question: { type: string }
+        answer: { type: string }
+        timestamp: { type: string, format: date-time }
+        guardrail_state: { $ref: '#/components/schemas/GuardrailState' }
+        retrieved_count: { type: integer, minimum: 0, maximum: 5 }
+        used_count: { type: integer, minimum: 0 }
+        blocked_count: { type: integer, minimum: 0 }
+        model_used: { type: string }
+    ConversationResponse:
+      type: object
+      additionalProperties: false
+      required: [session_id, turns]
+      properties:
+        session_id: { type: string }
+        turns:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationTurn' }
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, components]
+      properties:
+        status: { type: string, enum: [healthy, unhealthy] }
+        components:
+          type: object
+          additionalProperties: { type: string, enum: [available, unavailable] }
+    ModelsResponse:
+      type: object
+      additionalProperties: false
+      required: [primary_model, fallback_model]
+      properties:
+        primary_model: { type: string }
+        fallback_model: { type: string }
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+  responses:
+    HealthOk:
+      description: Dependências indispensáveis disponíveis.
+      content: { application/json: { schema: { $ref: '#/components/schemas/HealthResponse' } } }
+    ValidationError:
+      description: Payload inválido; o pipeline não foi iniciado.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    SessionBusy:
+      description: Uma operação de chat para a mesma sessão já está em andamento.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    SessionNotFound:
+      description: Sessão inexistente ou expirada.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    DependencyUnavailable:
+      description: Dependência indispensável indisponível; resposta falhou de modo seguro.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }

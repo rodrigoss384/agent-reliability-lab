@@ -1,0 +1,26 @@
+[project]
+name = "rag-pii-guardrails"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "sqlalchemy",
+  "alembic",
+  "psycopg[binary]",
+  "pgvector",
+  "redis",
+  "pydantic-settings"
+]
+
+[project.optional-dependencies]
+dev = ["httpx", "pytest", "pytest-asyncio", "ruff"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
