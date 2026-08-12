@@ -10,11 +10,13 @@ dependencies = [
   "psycopg[binary]",
   "pgvector",
   "redis",
-  "pydantic-settings"
+  "pydantic-settings",
+  "httpx",
+  "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]
-dev = ["httpx", "pytest", "pytest-asyncio", "ruff"]
+dev = ["pytest", "pytest-asyncio", "ruff"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -24,3 +26,10 @@ pythonpath = ["."]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.2",
+]
