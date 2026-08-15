@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rodrigoss384/agent-reliability-lab/commit/d703e3f"><img src="https://img.shields.io/badge/commit-d703e3f-blue?logo=git&logoColor=white" alt="Commit"></a>
+  <a href="https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb"><img src="https://img.shields.io/badge/commit-d703e3f-blue?logo=git&logoColor=white" alt="Commit"></a>
   <img src="https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/fastapi-0.141-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black" alt="React 19">
@@ -88,18 +88,18 @@ Cada item é validável via frontend (http://localhost:5173) ou curl direto na A
 
 | # | Conceito | Tecnologias | Exemplo | Commit |
 |---|----------|-------------|---------|--------|
-| 1 | **PII detection no input** — bloqueio duro antes do pipeline | regex (`is_sensitive`, `classify_pii`), FastAPI middleware | `"Meu CPF é 123.456.789-00"` → estado `bloqueado-na-entrada` | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 2 | **PII detection em chunks do retrieval** — pré-guardrail exclui contexto sensível | pgvector similarity search, regex em loop sobre chunks | chunk `R$ 50.000` (threshold de faturamento) bloqueado | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 3 | **PII detection por juiz LLM** — judge NVIDIA NIM avalia resposta | NVIDIA NIM (Llama 3.1 8B), sentinela `judge_block` | `"Qual o CPF do João?"` → `bloqueado-na-saida` | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 3 | **Flag `preco_publico` libera catálogo público** | coluna Postgres `preco_publico`, branch no regex pré/pós-guardrail | `"Quanto custa o plano?"` → `R$ 49,90` entregue | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 4 | **Retrieval RAG com embeddings NVIDIA NIM** | pgvector, NIM Nemotron 3 Embed 1B, cosine distance (`<=>`) | Pergunta técnica → top-5 chunks por similaridade | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 5 | **Chain de fallback OpenRouter → NVIDIA NIM** | try/except encadeado, `RateLimitError` custom, `trace.fallback_used` | OpenRouter atinge cota → NIM assume | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 6 | **Table Editor (READ-ONLY)** | FastAPI admin endpoint, pgvector cast para text, resumo estatístico | Botão "Ver Tabelas" → overlay 12 docs + sparklines | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 7 | **Persistência de sessão com TTL** | redis-py, sliding TTL, in-memory fallback | 2 turnos sobrevivem a refresh, expira em 24h | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 8 | **Lock por session_id** | `threading.Lock`, HTTP 409 | 2 reqs simultâneas → 409 `session_busy` | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 9 | **Bloqueio por limite de cota** | estado `limite-cota` no trace, banner no frontend | Ambos esgotam → instrução para `NVIDIA_NIM_API_KEY` | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 10 | **Saudação pula retrieval via heurística + IntentClassifier** | regex saudação pt-BR, classifier NVIDIA NIM Llama 3.1 8B | `"Oi"` → `intent_skipped_retrieval=true` | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
-| 11 | **Contrato OpenAPI design-first** | OpenAPI 3.1.1, `/docs`, `/openapi.json` | Cliente gera SDK a partir do YAML | [c6d9ab8](https://github.com/rodrigoss384/agent-reliability-lab/commit/c6d9ab8) |
+| 1 | **PII detection no input** — bloqueio duro antes do pipeline | regex (`is_sensitive`, `classify_pii`), FastAPI middleware | `"Meu CPF é 123.456.789-00"` → estado `bloqueado-na-entrada` | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 2 | **PII detection em chunks do retrieval** — pré-guardrail exclui contexto sensível | pgvector similarity search, regex em loop sobre chunks | chunk `R$ 50.000` (threshold de faturamento) bloqueado | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 3 | **PII detection por juiz LLM** — judge NVIDIA NIM avalia resposta | NVIDIA NIM (Llama 3.1 8B), sentinela `judge_block` | `"Qual o CPF do João?"` → `bloqueado-na-saida` | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 3 | **Flag `preco_publico` libera catálogo público** | coluna Postgres `preco_publico`, branch no regex pré/pós-guardrail | `"Quanto custa o plano?"` → `R$ 49,90` entregue | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 4 | **Retrieval RAG com embeddings NVIDIA NIM** | pgvector, NIM Nemotron 3 Embed 1B, cosine distance (`<=>`) | Pergunta técnica → top-5 chunks por similaridade | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 5 | **Chain de fallback OpenRouter → NVIDIA NIM** | try/except encadeado, `RateLimitError` custom, `trace.fallback_used` | OpenRouter atinge cota → NIM assume | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 6 | **Table Editor (READ-ONLY)** | FastAPI admin endpoint, pgvector cast para text, resumo estatístico | Botão "Ver Tabelas" → overlay 12 docs + sparklines | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 7 | **Persistência de sessão com TTL** | redis-py, sliding TTL, in-memory fallback | 2 turnos sobrevivem a refresh, expira em 24h | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 8 | **Lock por session_id** | `threading.Lock`, HTTP 409 | 2 reqs simultâneas → 409 `session_busy` | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 9 | **Bloqueio por limite de cota** | estado `limite-cota` no trace, banner no frontend | Ambos esgotam → instrução para `NVIDIA_NIM_API_KEY` | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 10 | **Saudação pula retrieval via heurística + IntentClassifier** | regex saudação pt-BR, classifier NVIDIA NIM Llama 3.1 8B | `"Oi"` → `intent_skipped_retrieval=true` | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
+| 11 | **Contrato OpenAPI design-first** | OpenAPI 3.1.1, `/docs`, `/openapi.json` | Cliente gera SDK a partir do YAML | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
 
 ---
 
