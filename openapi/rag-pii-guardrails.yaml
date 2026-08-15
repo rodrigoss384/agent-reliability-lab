@@ -11,14 +11,16 @@ servers:
 paths:
   /api/health:
     get:
-      summary: Consultar saúde sanitizada das dependências.
+      summary: Consultar saúde das dependências
+      description: Verifica disponibilidade do PostgreSQL, Redis e provedor de embedding. Retorna status geral e status individual de cada componente.
       operationId: getHealth
       responses:
         '200': { $ref: '#/components/responses/HealthOk' }
         '503': { $ref: '#/components/responses/DependencyUnavailable' }
   /api/models:
     get:
-      summary: Consultar identificadores públicos dos modelos efetivos.
+      summary: Consultar modelos configurados
+      description: Retorna identificadores dos modelos efetivos do chain (primário OpenRouter, fallback NVIDIA NIM).
       operationId: getModels
       responses:
         '200':
@@ -28,7 +30,13 @@ paths:
               schema: { $ref: '#/components/schemas/ModelsResponse' }
   /api/chat:
     post:
-      summary: Processar uma pergunta no pipeline RAG com guardrails.
+      summary: Processar pergunta no pipeline RAG com guardrails PII
+      description: |
+        Executa retrieval semântico no PostgreSQL/pgvector, pré-guardrail
+        (regex bloqueia R$/CPF/CNPJ/email antes do LLM), geração (chain
+        OpenRouter primário + NVIDIA NIM fallback), pós-guardrail (regex
+        na resposta + judge NVIDIA NIM). Retorna resposta ou bloqueio
+        sanitizado com estado `guardrail_state`.
       operationId: createChat
       requestBody:
         required: true
@@ -46,7 +54,8 @@ paths:
         '503': { $ref: '#/components/responses/DependencyUnavailable' }
   /api/conversation/{session_id}:
     get:
-      summary: Recuperar histórico sanitizado de uma sessão local.
+      summary: Recuperar histórico sanitizado de sessão
+      description: Retorna turnos com estado `entregue` dentro do TTL da sessão.
       operationId: getConversation
       parameters:
         - $ref: '#/components/parameters/SessionId'
@@ -57,6 +66,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ConversationResponse' }
         '404': { $ref: '#/components/responses/SessionNotFound' }
+  /api/admin/knowledge-documents:
+    get:
+      summary: Listar documentos de conhecimento (Table Editor, READ-ONLY)
+      description: |
+        Retorna schema de colunas + linhas com resumo estatístico do embedding
+        (norma L2, min/max/mean, primeiros 5 e últimos 5 floats) +
+        flag preco_publico. Endpoint dev-only, sem autenticação.
+      operationId: listKnowledgeDocuments
+      parameters:
+        - { name: limit,  in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: source, in: query, required: false, schema: { type: string, minLength: 1 } }
+      responses:
+        '200':
+          description: Página de knowledge_documents com schema e resumo do embedding.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KnowledgeDocumentsResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
 components:
   parameters:
     SessionId:
@@ -77,7 +105,7 @@ components:
         session_id: { type: string, minLength: 1 }
     Trace:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       required: [retrieved_count, used_count, blocked_count, guardrail_state, total_ms]
       properties:
         retrieved_count: { type: integer, minimum: 0, maximum: 5 }
@@ -88,6 +116,32 @@ components:
         sources:
           type: array
           items: { type: string }
+        rag_used: { type: boolean }
+        input_pii_detected: { type: boolean, description: 'True quando o input do usuário contém PII detectada por regex (bloqueio duro antes do pipeline).' }
+        input_pii_categories:
+          type: array
+          items: { type: string }
+          description: 'Categorias PII detectadas no input do usuário (CPF/CNPJ/email/R$/system_prompt).'
+        pii_categories:
+          type: array
+          items: { type: string }
+          description: 'Categorias PII que afetaram a decisão final de bloqueio (resposta do LLM). Inclui sentinela judge_block quando judge detecta sem regex.'
+        pii_categories_retrieval:
+          type: array
+          items: { type: string }
+          description: 'Categorias PII detectadas em chunks do retrieval (informativo; não afeta decisão).'
+        intent_skipped_retrieval: { type: boolean, description: 'Indica se o IntentClassifier pulou o retrieval (saudação ou ambíguo).' }
+        judge_decision: { type: string }
+        judge_model: { type: string, description: 'Identificador do modelo usado pelo judge (NVIDIA NIM)' }
+        primary_model: { type: string, description: 'Identificador do modelo primário do chain (OpenRouter)' }
+        fallback_used: { type: boolean, description: 'Indica se o chain usou o fallback NVIDIA NIM' }
+        pre_guardrail_ms: { type: integer, minimum: 0 }
+        llm_ms: { type: integer, minimum: 0 }
+        post_guardrail_ms: { type: integer, minimum: 0, description: 'Soma de pii_regex_ms + pii_judge_ms (backward compat).' }
+        pii_regex_ms: { type: integer, minimum: 0, description: 'Tempo do regex pós-guardrail (classify_pii + is_sensitive na resposta do LLM).' }
+        pii_judge_ms: { type: integer, minimum: 0, description: 'Tempo da chamada do judge NVIDIA NIM.' }
+        rate_limit_reason: { type: string }
+        embedding_provider: { type: string, description: 'Identificador do provedor de embedding (sempre nvidia_nim)' }
     ChatResponse:
       type: object
       additionalProperties: false
@@ -134,8 +188,10 @@ components:
       additionalProperties: false
       required: [primary_model, fallback_model]
       properties:
-        primary_model: { type: string }
-        fallback_model: { type: string }
+        primary_model: { type: string, description: 'Identificador do modelo primário (OpenRouter)' }
+        fallback_model:
+          type: string
+          description: 'Identificador do modelo fallback NVIDIA NIM; string vazia quando NVIDIA_NIM_API_KEY ausente'
     ErrorResponse:
       type: object
       additionalProperties: false
@@ -143,6 +199,63 @@ components:
       properties:
         code: { type: string }
         message: { type: string }
+    ColumnDescriptor:
+      type: object
+      additionalProperties: false
+      required: [name, type, nullable, primary_key]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        nullable: { type: boolean }
+        primary_key: { type: boolean }
+    EmbeddingSummary:
+      type: object
+      additionalProperties: false
+      required: [dim, l2_norm, min, max, mean, first5, last5]
+      properties:
+        dim: { type: integer, minimum: 0 }
+        l2_norm: { type: number, minimum: 0 }
+        min: { type: number }
+        max: { type: number }
+        mean: { type: number }
+        first5:
+          type: array
+          items: { type: number }
+        last5:
+          type: array
+          items: { type: number }
+    KnowledgeDocumentRow:
+      type: object
+      additionalProperties: false
+      required: [id, source, content, embedding_summary, preco_publico, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        source: { type: string }
+        content: { type: string }
+        embedding_summary: { $ref: '#/components/schemas/EmbeddingSummary' }
+        preco_publico: { type: boolean, description: 'Quando true, o regex de R$ não bloqueia este chunk no pré-guardrail.' }
+        created_at: { type: string, format: date-time }
+    TableDescriptor:
+      type: object
+      additionalProperties: false
+      required: [name, columns]
+      properties:
+        name: { type: string }
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/ColumnDescriptor' }
+    KnowledgeDocumentsResponse:
+      type: object
+      additionalProperties: false
+      required: [total, limit, offset, table, rows]
+      properties:
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+        table: { $ref: '#/components/schemas/TableDescriptor' }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/KnowledgeDocumentRow' }
   responses:
     HealthOk:
       description: Dependências indispensáveis disponíveis.
