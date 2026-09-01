@@ -577,7 +577,7 @@ wheels = [
 
 [[package]]
 name = "rag-pii-guardrails"
-version = "0.1.0"
+version = "1.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "alembic" },

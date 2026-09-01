@@ -32,7 +32,7 @@ flowchart LR
     API -->|3. generate| OR[OpenRouter<br/>poolside/laguna-s-2.1:free]
     OR -->|4. candidate| API
     API -->|5. post-guardrail regex| API
-    API -->|6. evaluate| NJ[NVIDIA NIM<br/>Llama 3.1 8B Judge]
+    API -->|6. evaluate| NJ[NVIDIA NIM<br/>Llama 3.2 11B Judge]
     NJ -->|SIM/NAO| API
     API -->|sessions| RD[(Redis)]
     API -->|telemetria & traces| LF[Langfuse Cloud<br/>Observabilidade]
@@ -169,7 +169,7 @@ NVIDIA_NIM_API_KEY=nvapi-...
 | Provedor | Limite |
 |----------|--------|
 | OpenRouter (free models) | 50 req/dia (sem credits); 1.000 req/dia com ≥10 credits |
-| NVIDIA NIM (Developer Program) | Créditos trial para prototipagem; modelo `llama-3.1-8b-instruct` e `nemotron-3-embed-1b` cobertos |
+| NVIDIA NIM (Developer Program) | Créditos trial para prototipagem; modelo `llama-3.2-11b-vision-instruct` e `nemotron-3-embed-1b` cobertos |
 
 ### Como o fallback aparece no trace
 
@@ -177,11 +177,11 @@ Quando o primário OpenRouter atinge rate limit, o chain automaticamente chama o
 
 ```json
 {
-  "model_used": "meta/llama-3.1-8b-instruct",
+  "model_used": "meta/llama-3.2-11b-vision-instruct",
   "trace": {
     "primary_model": "poolside/laguna-s-2.1:free",
     "fallback_used": true,
-    "judge_model": "meta/llama-3.1-8b-instruct",
+    "judge_model": "meta/llama-3.2-11b-vision-instruct",
     "embedding_provider": "nvidia_nim"
   }
 }

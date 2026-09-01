@@ -37,10 +37,12 @@ OPENROUTER_REASONING_ENABLED = _bool("OPENROUTER_REASONING_ENABLED", True)
 
 NVIDIA_NIM_BASE_URL = os.getenv("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1")
 NVIDIA_NIM_API_KEY = os.getenv("NVIDIA_NIM_API_KEY", "")
-NVIDIA_NIM_FALLBACK_MODEL = os.getenv("NVIDIA_NIM_FALLBACK_MODEL", "meta/llama-3.1-8b-instruct")
+NVIDIA_NIM_FALLBACK_MODEL = os.getenv(
+    "NVIDIA_NIM_FALLBACK_MODEL", "meta/llama-3.2-11b-vision-instruct"
+)
 NVIDIA_NIM_TEMPERATURE = _float("NVIDIA_NIM_TEMPERATURE", 0.5)
 
-NVIDIA_NIM_JUDGE_MODEL = os.getenv("NVIDIA_NIM_JUDGE_MODEL", "meta/llama-3.1-8b-instruct")
+NVIDIA_NIM_JUDGE_MODEL = os.getenv("NVIDIA_NIM_JUDGE_MODEL", "meta/llama-3.2-11b-vision-instruct")
 NVIDIA_NIM_JUDGE_TEMPERATURE = _float("NVIDIA_NIM_JUDGE_TEMPERATURE", 0.1)
 
 NVIDIA_NIM_EMBEDDING_MODEL = os.getenv("NVIDIA_NIM_EMBEDDING_MODEL", "nvidia/nemotron-3-embed-1b")

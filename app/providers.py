@@ -271,12 +271,17 @@ AGENT_SYSTEM_PROMPT = (
 
 INTENT_SYSTEM_PROMPT = (
     "Voce e um classificador de intencao de mensagem de usuario em portugues brasileiro. "
-    "Recebe a mensagem e deve responder APENAS 'pergunta' ou 'conversa'. "
-    "Responda 'pergunta' quando a mensagem buscar informacao, contexto, definicao, comparacao "
-    "ou qualquer conteudo que possa estar numa base de conhecimento. "
-    "Responda 'conversa' quando for saudacao, agradecimento, despedida, confirmacao simples "
-    "ou mensagem que nao pede informacao da base. "
-    "Nao explique, nao faca perguntas, apenas 'pergunta' ou 'conversa'."
+    "Recebe a mensagem e deve responder APENAS a palavra 'pergunta' ou 'conversa'. "
+    "Responda 'pergunta' para qualquer pergunta, duvida sobre planos, precos, regras, SLA, cancelamento, suporte ou busca de informacao. "
+    "Responda 'conversa' APENAS para saudacoes (oi, ola), agradecimentos (obrigado, valeu), despedidas (tchau, ate mais) ou confirmacoes (ok, blz). "
+    "Exemplos:\n"
+    "- 'Oi, tudo bem?' -> conversa\n"
+    "- 'Obrigado pela ajuda' -> conversa\n"
+    "- 'Qual o SLA do plano?' -> pergunta\n"
+    "- 'Qual o SLA do plano Basico disponivel?' -> pergunta\n"
+    "- 'Quanto custa o plano empresarial?' -> pergunta\n"
+    "- 'Como funciona o cancelamento?' -> pergunta\n"
+    "Responda estritamente 'pergunta' ou 'conversa'."
 )
 
 
