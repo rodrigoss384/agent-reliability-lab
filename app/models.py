@@ -17,7 +17,9 @@ class KnowledgeDocument(Base):
     source: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding = mapped_column(Vector(2048), nullable=True)
-    preco_publico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    preco_publico: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -13,6 +13,7 @@ dependencies = [
   "pydantic-settings",
   "httpx",
   "python-dotenv>=1.2.2",
+  "langfuse>=4.15.1",
 ]
 
 [project.optional-dependencies]

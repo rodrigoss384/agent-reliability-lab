@@ -23,7 +23,9 @@ def _bool(key: str, default: bool) -> bool:
     return val.lower() in ("true", "1", "yes", "on")
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://rag:rag@localhost:5432/rag_guardrails")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql+psycopg://rag:rag@localhost:5432/rag_guardrails"
+)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")

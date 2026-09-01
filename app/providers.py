@@ -3,6 +3,7 @@ import time
 from typing import Any
 
 import httpx
+from langfuse import observe
 
 from app.config import (
     NVIDIA_NIM_API_KEY,
@@ -49,7 +50,9 @@ def _nvidia_nim_headers() -> dict[str, str]:
 
 def _extract_rate_limit_info(response: httpx.Response) -> tuple[int | None, str]:
     retry_after_raw = response.headers.get("retry-after") or response.headers.get("Retry-After")
-    reset_raw = response.headers.get("X-RateLimit-Reset") or response.headers.get("x-ratelimit-reset")
+    reset_raw = response.headers.get("X-RateLimit-Reset") or response.headers.get(
+        "x-ratelimit-reset"
+    )
     retry_after: int | None = None
     if retry_after_raw and retry_after_raw.isdigit():
         retry_after = int(retry_after_raw)
@@ -95,9 +98,7 @@ def _call_chat_completions(
             )
             if response.status_code == 429:
                 retry_after, detail = _extract_rate_limit_info(response)
-                last_429_message = (
-                    detail or f"HTTP 429 from {provider_name}"
-                )
+                last_429_message = detail or f"HTTP 429 from {provider_name}"
                 if attempt < max_attempts:
                     delay = base_delay * (2 ** (attempt - 1))
                     time.sleep(delay)
@@ -174,6 +175,7 @@ class LLMProvider:
     def __init__(self, model: str | None = None):
         self.model = model or OPENROUTER_PRIMARY_MODEL
 
+    @observe(as_type="generation", name="llm_generation")
     def generate(
         self,
         prompt: str | None = None,
@@ -196,6 +198,7 @@ class NvidiaNimProvider:
     def __init__(self, model: str | None = None):
         self.model = model or NVIDIA_NIM_FALLBACK_MODEL
 
+    @observe(as_type="generation", name="llm_generation_fallback")
     def generate(
         self,
         prompt: str | None = None,
@@ -278,8 +281,10 @@ INTENT_SYSTEM_PROMPT = (
 
 
 _NON_QUESTION_PATTERNS = (
-    (r"^(oi|ol[áa]|hey|hi|hello|tchau|obrigad[oa]|valeu|blz|beleza|tranquilo|ok|sim|n[ãa]o|"
-    r"certo|beleza|show|mando|at[ée] (mais|logo|depois))$"),
+    (
+        r"^(oi|ol[áa]|hey|hi|hello|tchau|obrigad[oa]|valeu|blz|beleza|tranquilo|ok|sim|n[ãa]o|"
+        r"certo|beleza|show|mando|at[ée] (mais|logo|depois))$"
+    ),
 )
 
 
@@ -299,6 +304,7 @@ class IntentClassifier:
     def __init__(self, model: str | None = None):
         self.model = model or NVIDIA_NIM_FALLBACK_MODEL
 
+    @observe(as_type="generation", name="intent_classifier")
     def classify(self, text: str) -> bool:
         """Retorna True se a mensagem precisa de retrieval; False caso contrario."""
         content, _ = _call_nvidia_nim(
@@ -341,6 +347,7 @@ _SYSTEM_PROMPT_LEAK_PATTERNS = [
 ]
 
 
+@observe(as_type="span", name="is_sensitive")
 def is_sensitive(content: str, preco_publico: bool = False) -> bool:
     if not preco_publico and re.search(r"R\$\s*\d+", content):
         return True
@@ -356,6 +363,7 @@ def is_sensitive(content: str, preco_publico: bool = False) -> bool:
     return False
 
 
+@observe(as_type="span", name="classify_pii")
 def classify_pii(content: str, preco_publico: bool = False) -> list[str]:
     categories: list[str] = []
     if not preco_publico and re.search(r"R\$\s*\d+", content):
@@ -377,6 +385,7 @@ class NvidiaNimJudge:
     def __init__(self, model: str | None = None):
         self.model = model or NVIDIA_NIM_JUDGE_MODEL
 
+    @observe(as_type="generation", name="pii_judge")
     def evaluate(self, text: str) -> str:
         content, _ = _call_nvidia_nim(
             [
@@ -503,6 +512,7 @@ def _embed(text: str, input_type: str = "query") -> list[float]:
 
 
 class Retriever:
+    @observe(as_type="retriever", name="retrieval")
     def retrieve(self, question: str, limit: int | None = None) -> list[dict[str, Any]]:
         limit = limit or RETRIEVAL_LIMIT
         try:

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from langfuse import get_client, observe
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -28,6 +29,7 @@ from app.providers import (
 
 try:
     import redis as _redis_lib  # noqa: F401
+
     _has_redis = True
 except ImportError:
     _has_redis = False
@@ -44,6 +46,15 @@ app.add_middleware(
 
 session_locks: dict[str, Lock] = {}
 
+
+@app.on_event("shutdown")
+def shutdown_event():
+    try:
+        get_client().flush()
+    except Exception:  # noqa: BLE001, S110
+        pass
+
+
 _redis: Any = None
 _memory_store: dict[str, dict] = {}
 
@@ -56,6 +67,7 @@ def _get_redis() -> Any:
         return _redis
     try:
         import redis as _r
+
         _redis = _r.from_url(REDIS_URL, decode_responses=True)
         _redis.ping()
         return _redis
@@ -104,8 +116,15 @@ def _session_key(session_id: str) -> str:
 
 def _summarize_embedding(vec: list[float] | None) -> dict[str, Any]:
     if not vec:
-        return {"dim": 0, "l2_norm": 0.0, "min": 0.0, "max": 0.0, "mean": 0.0,
-                "first5": [], "last5": []}
+        return {
+            "dim": 0,
+            "l2_norm": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "first5": [],
+            "last5": [],
+        }
     n = len(vec)
     total = sum(vec)
     mn = min(vec)
@@ -210,7 +229,6 @@ class Trace(BaseModel):
     intent_skipped_retrieval: bool = False
 
 
-
 class ChatResponse(BaseModel):
     session_id: str
     answer: str
@@ -220,7 +238,9 @@ class ChatResponse(BaseModel):
 
 
 @app.post("/api/chat")
+@observe(name="chat_pipeline", capture_input=False, capture_output=False)
 def create_chat(request: ChatRequest):
+    client = get_client()
     session_id = request.session_id or str(uuid.uuid4())
 
     try:
@@ -239,6 +259,9 @@ def create_chat(request: ChatRequest):
             judge_model=judge.model,
             primary_model=llm_provider.model,
             fallback_used=False,
+        )
+        client.update_current_span(
+            metadata={"guardrail_state": "falha-segura", "pii_categories": []}
         )
         return ChatResponse(
             session_id=session_id,
@@ -288,6 +311,9 @@ def create_chat(request: ChatRequest):
         }
         data["turns"].append(turn)
         _save_session(session_id, data)
+        client.update_current_span(
+            metadata={"guardrail_state": "bloqueado-na-entrada", "pii_categories": input_categories}
+        )
         return ChatResponse(
             session_id=session_id,
             answer=answer,
@@ -299,8 +325,7 @@ def create_chat(request: ChatRequest):
     lock = session_locks.setdefault(session_id, Lock())
     if not lock.acquire(blocking=False):
         return JSONResponse(
-            status_code=409,
-            content={"detail": "session_busy", "session_id": session_id}
+            status_code=409, content={"detail": "session_busy", "session_id": session_id}
         )
 
     try:
@@ -361,7 +386,10 @@ def create_chat(request: ChatRequest):
                     if is_sensitive(chunk.get("content", ""), preco_publico=is_pub):
                         blocked_count += 1
                         pii_categories_retrieval = list(
-                            {*pii_categories_retrieval, *classify_pii(chunk.get("content", ""), preco_publico=is_pub)}
+                            {
+                                *pii_categories_retrieval,
+                                *classify_pii(chunk.get("content", ""), preco_publico=is_pub),
+                            }
                         )
                     else:
                         used_chunks.append(chunk)
@@ -401,9 +429,7 @@ def create_chat(request: ChatRequest):
                         }
                     )
                 else:
-                    conversation_messages.append(
-                        {"role": "user", "content": request.question}
-                    )
+                    conversation_messages.append({"role": "user", "content": request.question})
 
                 llm_start = time.perf_counter()
                 candidate, reasoning_details, model_used, fallback_used = _generate_with_fallbacks(
@@ -414,9 +440,7 @@ def create_chat(request: ChatRequest):
                 )
                 llm_ms = int((time.perf_counter() - llm_start) * 1000)
 
-                has_preco_publico_chunk = any(
-                    bool(c.get("preco_publico")) for c in used_chunks
-                )
+                has_preco_publico_chunk = any(bool(c.get("preco_publico")) for c in used_chunks)
 
                 post_guardrail_start = time.perf_counter()
                 regex_start = time.perf_counter()
@@ -493,10 +517,13 @@ def create_chat(request: ChatRequest):
                 "guardrail_state": guardrail_state,
                 "trace": trace.model_dump(),
                 "reasoning_details": None,
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
             data["turns"].append(turn)
             _save_session(session_id, data)
+            client.update_current_span(
+                metadata={"guardrail_state": guardrail_state, "pii_categories": pii_categories}
+            )
             return JSONResponse(
                 status_code=503,
                 content=ChatResponse(
@@ -504,8 +531,8 @@ def create_chat(request: ChatRequest):
                     answer=answer,
                     model_used=model_used,
                     guardrail_state=guardrail_state,
-                    trace=trace
-                ).model_dump()
+                    trace=trace,
+                ).model_dump(),
             )
         except RateLimitError as rl_exc:
             guardrail_state = "limite-cota"
@@ -562,10 +589,13 @@ def create_chat(request: ChatRequest):
                 "guardrail_state": guardrail_state,
                 "trace": trace.model_dump(),
                 "reasoning_details": None,
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
             data["turns"].append(turn)
             _save_session(session_id, data)
+            client.update_current_span(
+                metadata={"guardrail_state": guardrail_state, "pii_categories": pii_categories}
+            )
             return JSONResponse(
                 status_code=429,
                 content=ChatResponse(
@@ -573,8 +603,8 @@ def create_chat(request: ChatRequest):
                     answer=answer,
                     model_used=model_used,
                     guardrail_state=guardrail_state,
-                    trace=trace
-                ).model_dump()
+                    trace=trace,
+                ).model_dump(),
             )
         except Exception:  # noqa: BLE001
             guardrail_state = "falha-segura"
@@ -613,7 +643,7 @@ def create_chat(request: ChatRequest):
             answer=answer,
             model_used=model_used,
             guardrail_state=guardrail_state,
-            trace=trace
+            trace=trace,
         )
 
         turn = {
@@ -623,11 +653,24 @@ def create_chat(request: ChatRequest):
             "guardrail_state": guardrail_state,
             "trace": trace.model_dump(),
             "reasoning_details": reasoning_details,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         data["turns"].append(turn)
         data["last_activity"] = time.time()
         _save_session(session_id, data)
+
+        has_preco_publico_bypass = False
+        if used_chunks:
+            has_preco_publico_chunk = any(bool(c.get("preco_publico")) for c in used_chunks)
+            has_preco_publico_bypass = has_preco_publico_chunk and not pii_categories
+
+        client.update_current_span(
+            metadata={
+                "guardrail_state": guardrail_state,
+                "pii_categories": pii_categories,
+                "preco_publico_bypass": has_preco_publico_bypass,
+            }
+        )
 
         return response
     finally:
@@ -654,9 +697,7 @@ def get_health():
         "fallback_chat": (
             nvidia_nim_fallback_provider.model if nvidia_nim_fallback_provider else ""
         ),
-        "embedding": (
-            nvidia_nim_embedding_provider.model if nvidia_nim_embedding_provider else ""
-        ),
+        "embedding": (nvidia_nim_embedding_provider.model if nvidia_nim_embedding_provider else ""),
         "judge": judge.model,
     }
 
@@ -697,11 +738,11 @@ def get_conversation(session_id: str):
                 "model_used": t["model_used"],
                 "guardrail_state": t["guardrail_state"],
                 "trace": t["trace"],
-                "timestamp": t["timestamp"]
+                "timestamp": t["timestamp"],
             }
             for t in data["turns"]
             if t.get("guardrail_state") == "entregue"
-        ]
+        ],
     }
 
 
@@ -753,14 +794,16 @@ def list_knowledge_documents(
                     vec = [float(x) for x in stripped.split(",")]
                 except ValueError:
                     vec = None
-        parsed_rows.append({
-            "id": str(r.id),
-            "source": r.source,
-            "content": r.content,
-            "embedding_summary": _summarize_embedding(vec),
-            "preco_publico": bool(r.preco_publico),
-            "created_at": r.created_at.isoformat() if r.created_at else None,
-        })
+        parsed_rows.append(
+            {
+                "id": str(r.id),
+                "source": r.source,
+                "content": r.content,
+                "embedding_summary": _summarize_embedding(vec),
+                "preco_publico": bool(r.preco_publico),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+        )
 
     return {
         "total": int(total),

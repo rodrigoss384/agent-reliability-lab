@@ -2,6 +2,7 @@
 
 Usage: uv run python -m app.seed
 """
+
 import time
 import uuid
 
@@ -87,7 +88,9 @@ def seed() -> None:
                 )
             )
             flag_marker = " *preco_publico" if doc.get("preco_publico") else ""
-            print(f"  [{i + 1}/{len(KNOWLEDGE_BASE)}]{flag_marker} {doc['source']} (dim={len(embedding)})")
+            print(
+                f"  [{i + 1}/{len(KNOWLEDGE_BASE)}]{flag_marker} {doc['source']} (dim={len(embedding)})"
+            )
 
 
 def apply_metadata_flags() -> None:
@@ -100,7 +103,9 @@ def apply_metadata_flags() -> None:
         for doc in KNOWLEDGE_BASE:
             flag = bool(doc.get("preco_publico", False))
             conn.execute(
-                text("UPDATE knowledge_documents SET preco_publico = :flag WHERE content = :content"),
+                text(
+                    "UPDATE knowledge_documents SET preco_publico = :flag WHERE content = :content"
+                ),
                 {"flag": flag, "content": doc["content"]},
             )
     print("[seed] apply_metadata_flags: preco_publico sincronizado em knowledge_documents.")
