@@ -34,7 +34,7 @@ try:
 except ImportError:
     _has_redis = False
 
-app = FastAPI(title="RAG PII Guardrails API", version="0.1.0")
+app = FastAPI(title="RAG PII Guardrails API", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,

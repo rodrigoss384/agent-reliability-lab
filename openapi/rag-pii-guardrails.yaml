@@ -1,7 +1,7 @@
 openapi: 3.1.1
 info:
   title: RAG PII Guardrails API
-  version: 0.1.0
+  version: 1.1.0
   description: API local da demonstração com dados exclusivamente sintéticos.
   license:
     name: Apache-2.0
