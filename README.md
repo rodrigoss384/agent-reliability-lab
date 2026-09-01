@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rodrigoss384/agent-reliability-lab/commit/d60c050"><img src="https://img.shields.io/badge/commit-d60c050-blue?logo=git&logoColor=white" alt="Commit"></a>
+  <a href="https://github.com/rodrigoss384/agent-reliability-lab/commit/0078381"><img src="https://img.shields.io/badge/commit-0078381-blue?logo=git&logoColor=white" alt="Commit"></a>
   <img src="https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/fastapi-0.141-009688?logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/react-19-61DAFB?logo=react&logoColor=black" alt="React 19">
@@ -92,7 +92,7 @@ flowchart LR
 | # | Escopo & Funcionalidades Implementadas | Tecnologias & Componentes | Commit |
 |---|-----------------------------------------|---------------------------|--------|
 | 1 | **Pipeline RAG com Guardrails PII, Chain LLM com Fallback, Flag Preço Público e Table Editor** — Detecção de PII no input (bloqueio duro), pré-guardrail em chunks com bypass para catálogo público (`preco_publico`), pós-guardrail regex + juiz LLM (NVIDIA NIM Llama 3.1 8B), chain de geração OpenRouter → NVIDIA NIM, busca semântica no pgvector (2048 dim), persistência Redis com lock por `session_id` e interface React 19 Dracula com Table Editor READ-ONLY. | FastAPI, pgvector, OpenRouter, NVIDIA NIM, Redis, React 19, Tailwind CSS 4, Vitest, Pytest | [35da5bb](https://github.com/rodrigoss384/agent-reliability-lab/commit/35da5bb) |
-| 2 | **Observabilidade com Langfuse Cloud & Rastreamento Granular de Guardrails** — Instrumentação completa em Spans OpenTelemetry (`pre-guardrail`, `retrieval`, `llm_generation`, `pii_judge`, `is_sensitive`, `classify_pii`) com metadados de execução (`guardrail_state`, `pii_categories`, `preco_publico_bypass`) para análise e comprovação de decisões dos guardrails e falsos positivos. | Langfuse Python SDK, OpenTelemetry, FastAPI Lifespan Tracing | [d60c050](https://github.com/rodrigoss384/agent-reliability-lab/commit/d60c050) |
+| 2 | **Observabilidade com Langfuse Cloud & Rastreamento Granular de Guardrails** — Instrumentação completa em Spans OpenTelemetry (`pre-guardrail`, `retrieval`, `llm_generation`, `pii_judge`, `is_sensitive`, `classify_pii`) com metadados de execução (`guardrail_state`, `pii_categories`, `preco_publico_bypass`) para análise e comprovação de decisões dos guardrails e falsos positivos. | Langfuse Python SDK, OpenTelemetry, FastAPI Lifespan Tracing | [0078381](https://github.com/rodrigoss384/agent-reliability-lab/commit/0078381) |
 
 ---
 
