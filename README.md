@@ -19,7 +19,13 @@
 
 ---
 
-Laboratório de confiabilidade para agentes de IA. Demonstração reproduzível de um pipeline RAG com guardrails que previnem vazamento de dados sensíveis (PII) — antes e depois da chamada ao LLM, avaliação por juiz LLM e observabilidade ponta a ponta com **Langfuse Cloud**.
+> **RAG com guardrails que previnem vazamento de PII.** Pipeline que bloqueia dados sensíveis antes e depois da chamada ao LLM, com observabilidade ponta a ponta.
+>
+> **Problema:** RAG sem guardrail vaza CPF, CNPJ e dado sensível pro modelo. Em produção, isso é incidente de segurança.
+>
+> **Prova:** pré-guardrail (regex) + pós-guardrail (regex + judge LLM) + 5 estados de guardrail + tracing Langfuse + 63 testes de integração.
+
+Pipeline RAG com guardrails que previnem vazamento de dados sensíveis (PII), antes e depois da chamada ao LLM, com avaliação por juiz LLM e observabilidade ponta a ponta com **Langfuse Cloud**.
 
 ## Arquitetura
 
